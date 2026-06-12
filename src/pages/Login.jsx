@@ -55,8 +55,8 @@ export default function Login({ onLogin }) {
 
   return (
     <div style={{
-      minHeight: '100dvh', background: 'var(--bg)', display: 'flex',
-      flexDirection: 'column', overflow: 'hidden', position: 'relative',
+      height: '100dvh', background: 'var(--bg)', display: 'flex',
+      flexDirection: 'column', overflowY: 'auto', position: 'relative',
     }}>
       {/* Header */}
       <header style={{
