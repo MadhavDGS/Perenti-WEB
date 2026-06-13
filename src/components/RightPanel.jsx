@@ -20,10 +20,10 @@ export default function RightPanel() {
       <h3 style={{ fontSize: '1.15rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: 'var(--space-4)', fontFamily: 'var(--font-display)' }}>Community Stats</h3>
       <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', marginBottom: 32 }}>
         {[
-          { value: '500+', label: 'Members' },
-          { value: '12', label: 'Cities' },
-          { value: '200+', label: 'Founders' },
-          { value: '80+', label: 'Investors' },
+          { value: '2000+', label: 'Members' },
+          { value: '27+', label: 'Events' },
+          { value: '800+', label: 'Attendees' },
+          { value: 'Infinite', label: 'Collaborations' },
         ].map(s => (
           <div key={s.label} className="stat-card" style={{ padding: 'var(--space-3)', background: 'var(--bg-card)', border: 'none', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
             <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-display)' }}>{s.value}</div>

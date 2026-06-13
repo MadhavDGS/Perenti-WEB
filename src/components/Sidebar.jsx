@@ -1,6 +1,6 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, User, Settings, Moon, Sun, Calendar, Shield, Ticket } from 'lucide-react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Home, Users, User, Settings, Moon, Sun, Calendar, Shield, Ticket, Radio } from 'lucide-react';
 import Avatar from './Avatar';
 
 const ADMIN_EMAILS = ['admin@perenti.com', 'sreemadhav@gmail.com', 'madhav@ebc.com', 'shiva24.santosh@gmail.com'];
@@ -18,6 +18,7 @@ export default function Sidebar({ onLogout, theme, toggleTheme, currentUser }) {
     { to: '/discover', label: 'Discover', icon: Home },
     { to: '/directory', label: 'Directory', icon: Users },
     { to: '/meetups', label: 'Meetups', icon: Calendar },
+    { to: '/live', label: 'Live Now', icon: Radio },
     { to: '/registrations', label: 'My Passes', icon: Ticket },
     { to: '/profile/me', label: 'My Profile', icon: User },
     { to: '/settings', label: 'Settings', icon: Settings },

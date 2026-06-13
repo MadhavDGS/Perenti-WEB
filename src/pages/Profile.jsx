@@ -16,7 +16,7 @@ export default function Profile() {
 
   useEffect(() => {
     fetchMembers().then(data => {
-      const found = data.find(m => String(m.id) === String(id));
+      const found = data.find(m => String(m.id) === String(id) || String(m.email).toLowerCase() === String(id).toLowerCase());
       setMember(found || null);
       setLoading(false);
     });

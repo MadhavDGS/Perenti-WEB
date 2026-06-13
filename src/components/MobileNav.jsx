@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, User, Calendar, Ticket, Shield } from 'lucide-react';
+import { Home, Users, User, Calendar, Ticket, Shield, Radio } from 'lucide-react';
 
 const ADMIN_EMAILS = ['admin@perenti.com', 'sreemadhav@gmail.com', 'madhav@ebc.com','shiva24.santosh@gmail.com'];
 
@@ -15,6 +15,7 @@ export default function MobileNav({ currentUser }) {
     { to: '/discover',      label: 'Home',     icon: Home },
     { to: '/directory',     label: 'Members',  icon: Users },
     { to: '/meetups',       label: 'Meetups',  icon: Calendar },
+    { to: '/live',          label: 'Live',     icon: Radio },
     { to: '/registrations', label: 'Passes',   icon: Ticket },
     { to: '/profile/me',    label: 'Profile',  icon: User },
     ...(isAdmin ? [{ to: '/admin', label: 'Admin', icon: Shield }] : []),

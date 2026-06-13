@@ -15,6 +15,7 @@ import Directory from './pages/Directory';
 import Profile from './pages/Profile';
 import MyProfile from './pages/MyProfile';
 import Settings from './pages/Settings';
+import Live from './pages/Live';
 import Meetups from './pages/Meetups';
 import MeetupDetail from './pages/MeetupDetail';
 import AdminPanel from './pages/AdminPanel';
@@ -213,6 +214,7 @@ function AnimatedRoutesWrapper({ isLoggedIn, currentUser, ProtectedRoute, login,
         <Route path="/directory" element={<ProtectedRoute><Directory /></ProtectedRoute>} />
         <Route path="/meetups" element={<ProtectedRoute><Meetups /></ProtectedRoute>} />
         <Route path="/meetups/:id" element={<MeetupDetail />} />
+        <Route path="/live" element={<ProtectedRoute><Live currentUser={currentUser} /></ProtectedRoute>} />
         <Route path="/registrations" element={<ProtectedRoute><Registrations currentUser={currentUser} /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminPanel session={currentUser} /></ProtectedRoute>} />
         <Route path="/profile/me" element={<ProtectedRoute><MyProfile currentUser={currentUser} /></ProtectedRoute>} />
