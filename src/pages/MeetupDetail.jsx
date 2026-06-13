@@ -109,7 +109,7 @@ function PassModal({ ticket, meetup, onClose }) {
     }
   };
 
-  return (
+  return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--glass)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
       {/* Container */}
       <div style={{ width: '100%', height: '100%', maxWidth: 420, maxHeight: '100%', overflowY: 'auto', background: 'var(--bg)', display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -177,7 +177,8 @@ function PassModal({ ticket, meetup, onClose }) {
 
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -420,7 +421,7 @@ function RegisterModal({ meetup, session, onClose, onSuccess, initialPendingReco
     already_pending: 'Pending Registration',
   }[step] || 'Register for Meetup';
 
-  return (
+  return createPortal(
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
       background: 'rgba(6,27,15,0.7)', backdropFilter: 'blur(8px)',
@@ -702,7 +703,8 @@ function RegisterModal({ meetup, session, onClose, onSuccess, initialPendingReco
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
