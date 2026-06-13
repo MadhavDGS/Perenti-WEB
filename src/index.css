@@ -197,11 +197,12 @@ h5 { font-size: 1rem; }
 .main-feed {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   max-width: 100%;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .right-panel {
@@ -1019,10 +1020,15 @@ h5 { font-size: 1rem; }
   .mobile-header { display: flex !important; }
 
   /* Main feed needs bottom padding so content isn't behind nav */
-  .main-feed { padding-bottom: 90px !important; }
+  .main-feed { 
+    padding-bottom: 90px !important; 
+  }
 
-  /* Page layout — no sidebar means full width */
-  .app-layout { display: block; }
+  /* Page layout — keep it as flex so the wrapper takes full height */
+  .app-layout { 
+    display: flex; 
+    flex-direction: column;
+  }
 
   /* Page headers */
   .page-header { padding: var(--space-4) var(--space-4) var(--space-3); }

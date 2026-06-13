@@ -31,7 +31,8 @@ function MainLayout({ children, isLoggedIn, onLogout, theme, toggleTheme, curren
   const isProfilePage = location.pathname.startsWith('/profile/') && location.pathname !== '/profile/me';
   const isMePage = location.pathname === '/profile/me';
   const isSettingsPage = location.pathname === '/settings';
-  const isMeetupsPage = location.pathname.startsWith('/meetups');
+  const isMeetupsPage = location.pathname.startsWith('/meetups') && !location.pathname.match(/^\/meetups\/[a-zA-Z0-9_-]+$/);
+  const isMeetupDetailPage = location.pathname.match(/^\/meetups\/[a-zA-Z0-9_-]+$/);
   const isRegistrationsPage = location.pathname === '/registrations';
 
   return (
@@ -85,7 +86,7 @@ function MainLayout({ children, isLoggedIn, onLogout, theme, toggleTheme, curren
         <RightPanel currentUser={currentUser} />
       )}
 
-      <MobileNav />
+      {!isMeetupDetailPage && <MobileNav />}
     </div>
   );
 }

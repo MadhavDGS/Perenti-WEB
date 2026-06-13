@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { fetchUserReservations } from '../services/api';
-import { Calendar, MapPin, Clock, Ticket, CheckCircle, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, Clock, Ticket, CheckCircle, AlertCircle, MessageCircle, Clock3, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import CountdownTimer from '../components/CountdownTimer';
+import { ADMIN_WHATSAPP_NUMBER, buildWhatsAppUrl, buildRegistrationMessage } from '../config/whatsapp';
 
 function AttendeeBadgeQR({ reservation }) {
   let reason = 'Networking';
@@ -60,7 +62,7 @@ export default function Registrations({ currentUser }) {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = () => {
     if (currentUser?.email) {
       fetchUserReservations(currentUser.email)
         .then(res => {
@@ -71,7 +73,34 @@ export default function Registrations({ currentUser }) {
     } else {
       setLoading(false);
     }
-  }, [currentUser]);
+  };
+
+  useEffect(() => { load(); }, [currentUser]);
+
+  // Split by status
+  const pendingReservations = reservations.filter(r =>
+    r.status === 'pending_payment' &&
+    r.expires_at &&
+    new Date(r.expires_at) > new Date()
+  );
+  const expiredReservations = reservations.filter(r =>
+    r.status === 'expired' ||
+    r.status === 'rejected' ||
+    (r.status === 'pending_payment' && r.expires_at && new Date(r.expires_at) <= new Date())
+  );
+  const confirmedReservations = reservations.filter(r =>
+    r.status === 'confirmed' || r.status === 'checked_in'
+  );
+
+  const openWhatsApp = (res) => {
+    const m = res.meetup;
+    const msg = buildRegistrationMessage({
+      eventName: m?.title || 'EBC Meetup',
+      userName: res.user_name || currentUser?.name || '',
+      passes: res.quantity || 1,
+    });
+    window.open(buildWhatsAppUrl(ADMIN_WHATSAPP_NUMBER, msg), '_blank');
+  };
 
   if (loading) {
     return (
@@ -94,7 +123,79 @@ export default function Registrations({ currentUser }) {
       </div>
 
       <div style={{ padding: '24px', maxWidth: 680, margin: '0 auto', width: '100%' }}>
-        {reservations.length === 0 ? (
+
+        {/* ── Pending Registrations Section ── */}
+        {pendingReservations.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <Clock3 size={14} style={{ color: 'var(--orange, #FF7101)' }} />
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Pending Approval</h3>
+              <span style={{ background: 'rgba(255,113,1,0.15)', color: 'var(--orange, #FF7101)', fontWeight: 700, fontSize: '0.7rem', padding: '2px 8px', borderRadius: 999 }}>{pendingReservations.length}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {pendingReservations.map(res => {
+                const m = res.meetup;
+                return (
+                  <div key={res.id} style={{ background: 'var(--bg-card)', border: '1.5px solid rgba(255,113,1,0.3)', borderRadius: 16, overflow: 'hidden' }}>
+                    <div style={{ background: 'rgba(255,113,1,0.08)', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,113,1,0.15)' }}>
+                      <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.875rem', color: 'var(--orange, #FF7101)' }}>⏳ Awaiting Payment Verification</span>
+                      <span style={{ background: 'rgba(255,113,1,0.15)', color: 'var(--orange, #FF7101)', fontWeight: 700, fontSize: '0.65rem', padding: '3px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pending Approval</span>
+                    </div>
+                    <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{m?.title || 'EBC Meetup'}</h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                        {m?.date && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Calendar size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} /><span>{m.date}</span></div>}
+                        {m?.venue && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><MapPin size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} /><span>{m.venue}</span></div>}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Ticket size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} /><span>{res.quantity} {res.quantity === 1 ? 'Pass' : 'Passes'}</span></div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg-elevated)', borderRadius: 10, marginTop: 4 }}>
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Request expires in</span>
+                        <CountdownTimer expiresAt={res.expires_at} />
+                      </div>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>Complete your payment through WhatsApp and send the payment screenshot to the administrator. Your pass will be generated after approval.</p>
+                      <button onClick={() => openWhatsApp(res)} className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>
+                        <MessageCircle size={14} /> Open WhatsApp
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Expired / Rejected Section ── */}
+        {expiredReservations.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <XCircle size={14} style={{ color: 'var(--red)' }} />
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Expired / Not Approved</h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {expiredReservations.map(res => {
+                const m = res.meetup;
+                const isRejected = res.status === 'rejected';
+                return (
+                  <div key={res.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>{m?.title || 'EBC Meetup'}</h4>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                        {isRejected ? 'Your registration was not approved. Please re-register if interested.' : 'This registration request expired before payment was confirmed.'}
+                      </p>
+                      {m?.id && <Link to={`/meetups/${m.id}`} className="btn btn-ghost btn-sm" style={{ padding: '4px 0', fontSize: '0.8rem' }}>Register Again →</Link>}
+                    </div>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: 'rgba(242,87,48,0.1)', color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {isRejected ? 'Not Approved' : 'Expired'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Active / Confirmed Passes (existing unchanged) ── */}
+        {confirmedReservations.length === 0 && pendingReservations.length === 0 && expiredReservations.length === 0 ? (
           <div style={{ background: 'var(--bg-card)', border: '2px dashed var(--border-medium)', borderRadius: 20, padding: '48px 24px', textAlign: 'center', marginTop: 20 }}>
             <Ticket size={48} color="var(--border-strong)" style={{ margin: '0 auto 16px', opacity: 0.6 }} />
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: 8 }}>No passes found</h3>
@@ -105,9 +206,9 @@ export default function Registrations({ currentUser }) {
               Browse Meetups
             </Link>
           </div>
-        ) : (
+        ) : confirmedReservations.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {reservations.map(res => {
+            {confirmedReservations.map(res => {
               const m = res.meetup;
               if (!m) return null;
 
@@ -274,7 +375,7 @@ export default function Registrations({ currentUser }) {
               );
             })}
           </div>
-        )}
+        ) : null}
       </div>
       <div style={{ height: 80 }} />
     </div>

@@ -149,6 +149,83 @@ export const scanTicket = async (ticketId, action = 'check_in') => {
   return res.data;
 };
 
+// ── Payment Approval Workflow API ─────────────────────────────────────────────
+
+/**
+ * Creates a reservation in pending_payment state.
+ * expires_at is set to now + 10 minutes.
+ */
+export const createPendingReservation = async (data) => {
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  const res = await apiClient.post('/reservations', {
+    ...data,
+    status: 'pending_payment',
+    expires_at: expiresAt,
+  });
+  return res.data;
+};
+
+/**
+ * Checks if the user already has an active (non-expired) pending_payment
+ * reservation for the given meetupId. Returns the reservation or null.
+ */
+export const checkExistingPending = async (userEmail, meetupId) => {
+  if (!userEmail || !meetupId) return null;
+  try {
+    const res = await apiClient.get(`/users/${encodeURIComponent(userEmail)}/reservations`);
+    const all = Array.isArray(res.data) ? res.data : [];
+    return all.find(r =>
+      (r.meetup_id === meetupId || r.meetup?.id === meetupId) &&
+      r.status === 'pending_payment' &&
+      r.expires_at &&
+      new Date(r.expires_at) > new Date()
+    ) || null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Admin: fetch all pending_payment (and recently expired/rejected) reservations.
+ * Sends the admin email as a header for backend validation.
+ */
+export const fetchPendingApprovals = async (adminEmail) => {
+  try {
+    const res = await apiClient.get('/reservations/pending', {
+      headers: { 'X-Admin-Email': adminEmail },
+    });
+    return Array.isArray(res.data) ? res.data : [];
+  } catch (err) {
+    console.error('fetchPendingApprovals error:', err);
+    return [];
+  }
+};
+
+/**
+ * Admin: approve a pending reservation.
+ * Backend sets status=confirmed and generates ticket_id.
+ */
+export const approveReservation = async (id, adminEmail) => {
+  const res = await apiClient.put(
+    `/reservations/${id}/approve`,
+    {},
+    { headers: { 'X-Admin-Email': adminEmail } }
+  );
+  return res.data;
+};
+
+/**
+ * Admin: reject a pending reservation (soft-delete, kept 24h).
+ */
+export const rejectReservation = async (id, adminEmail) => {
+  const res = await apiClient.put(
+    `/reservations/${id}/reject`,
+    {},
+    { headers: { 'X-Admin-Email': adminEmail } }
+  );
+  return res.data;
+};
+
 
 // ── Tag Helpers ───────────────────────────────────────────────────────────────
 

@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Clock, MapPin, Users, Edit2, Trash2, CheckCircle, XCircle, Eye, EyeOff, Camera } from 'lucide-react';
-import { fetchMeetups, fetchReservations, updateReservationStatus, scanTicket } from '../services/api';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Plus, Calendar, Clock, MapPin, Users, Edit2, Trash2, CheckCircle, XCircle, Eye, EyeOff, Camera, Clock3, MessageCircle, Search, Check, X } from 'lucide-react';
+import { fetchMeetups, fetchReservations, updateReservationStatus, scanTicket, fetchPendingApprovals, approveReservation, rejectReservation } from '../services/api';
+import CountdownTimer, { useCountdown } from '../components/CountdownTimer';
 import axios from 'axios';
 import { Html5Qrcode } from 'html5-qrcode';
 
@@ -798,13 +799,193 @@ function TicketScanner({ scanMeetupId, scanMeetupTitle, onClearFilter }) {
   );
 }
 
+// ── Pending Approvals Tab ───────────────────────────────────────────────────
+function PendingApprovalsTab({ session }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [nameQuery, setNameQuery] = useState('');
+  const [eventQuery, setEventQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pending' | 'expired'
+  const [actioning, setActioning] = useState(null); // id of the item being approved/rejected
+  const adminEmail = session?.email || '';
+
+  const load = useCallback(async () => {
+    const data = await fetchPendingApprovals(adminEmail);
+    setItems(data);
+    setLoading(false);
+  }, [adminEmail]);
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 30000); // auto-poll every 30s
+    return () => clearInterval(interval);
+  }, [load]);
+
+  const handleApprove = async (id) => {
+    setActioning(id);
+    try {
+      await approveReservation(id, adminEmail);
+      await load();
+    } catch (err) {
+      alert('Approval failed: ' + (err?.response?.data?.detail || err?.message));
+    } finally {
+      setActioning(null);
+    }
+  };
+
+  const handleReject = async (id) => {
+    if (!window.confirm('Reject this registration? The user will need to re-register.')) return;
+    setActioning(id);
+    try {
+      await rejectReservation(id, adminEmail);
+      await load();
+    } catch (err) {
+      alert('Rejection failed: ' + (err?.response?.data?.detail || err?.message));
+    } finally {
+      setActioning(null);
+    }
+  };
+
+  // Client-side filtering
+  const filtered = items.filter(r => {
+    const nameMatch = !nameQuery || (r.user_name || '').toLowerCase().includes(nameQuery.toLowerCase());
+    const eventMatch = !eventQuery || (r.meetup?.title || '').toLowerCase().includes(eventQuery.toLowerCase());
+    const isExpired = r.expires_at && new Date(r.expires_at) <= new Date();
+    const statusMatch =
+      statusFilter === 'all' ||
+      (statusFilter === 'pending' && !isExpired && r.status === 'pending_payment') ||
+      (statusFilter === 'expired' && (isExpired || r.status === 'expired' || r.status === 'rejected'));
+    return nameMatch && eventMatch && statusMatch;
+  });
+
+  const pendingCount = items.filter(r =>
+    r.status === 'pending_payment' && r.expires_at && new Date(r.expires_at) > new Date()
+  ).length;
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-secondary)' }}>Loading approvals…</div>;
+  }
+
+  return (
+    <div>
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14, marginBottom: 24 }}>
+        <StatCard label="Pending" value={pendingCount} color="var(--orange, #FF7101)" />
+        <StatCard label="Total in Queue" value={items.length} />
+      </div>
+
+      {/* Search + Filter bar */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
+        <div style={{ flex: 1, minWidth: 160, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-elevated)', borderRadius: 10, border: '1px solid var(--border)' }}>
+          <Search size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+          <input value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="Search by name…" style={{ border: 'none', background: 'none', outline: 'none', fontSize: '0.875rem', color: 'var(--text-primary)', width: '100%', fontFamily: 'inherit' }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 160, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-elevated)', borderRadius: 10, border: '1px solid var(--border)' }}>
+          <Search size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+          <input value={eventQuery} onChange={e => setEventQuery(e.target.value)} placeholder="Search by event…" style={{ border: 'none', background: 'none', outline: 'none', fontSize: '0.875rem', color: 'var(--text-primary)', width: '100%', fontFamily: 'inherit' }} />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        {['all', 'pending', 'expired'].map(f => (
+          <button key={f} onClick={() => setStatusFilter(f)} className={`filter-chip ${statusFilter === f ? 'active' : ''}`}>
+            {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
+        <button onClick={load} className="btn btn-secondary btn-sm" style={{ marginLeft: 'auto' }}>Refresh</button>
+      </div>
+
+      {/* Queue */}
+      {filtered.length === 0 ? (
+        <div style={{ background: 'var(--bg-card)', border: '2px dashed var(--border-medium)', borderRadius: 20, padding: '48px 24px', textAlign: 'center' }}>
+          <CheckCircle size={40} color="var(--primary)" style={{ margin: '0 auto 16px', opacity: 0.5 }} />
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: 8 }}>All clear</div>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No pending approvals matching your filters.</div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {filtered.map(r => {
+            const isExpired = r.expires_at && new Date(r.expires_at) <= new Date();
+            const isRejected = r.status === 'rejected';
+            const isActioning = actioning === r.id;
+            const isClosed = isExpired || isRejected;
+
+            return (
+              <div key={r.id} style={{ background: 'var(--bg-card)', borderRadius: 16, border: `1.5px solid ${isClosed ? 'var(--border)' : 'rgba(255,113,1,0.3)'}`, overflow: 'hidden', opacity: isClosed ? 0.7 : 1 }}>
+                {/* Card header */}
+                <div style={{ padding: '12px 20px', background: isClosed ? 'var(--bg-elevated)' : 'rgba(255,113,1,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>{r.user_name || '—'}</div>
+                  {isClosed ? (
+                    <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: 'rgba(242,87,48,0.1)', color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {isRejected ? 'Rejected' : 'Expired'}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: 'rgba(255,113,1,0.15)', color: 'var(--orange, #FF7101)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pending</span>
+                  )}
+                </div>
+
+                {/* Card body */}
+                <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: '0.875rem' }}>
+                    <div><span style={{ color: 'var(--text-tertiary)', fontWeight: 500 }}>Event: </span><span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{r.meetup?.title || r.meetup_id}</span></div>
+                    <div><span style={{ color: 'var(--text-tertiary)', fontWeight: 500 }}>Passes: </span><span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{r.quantity}</span></div>
+                    <div><span style={{ color: 'var(--text-tertiary)', fontWeight: 500 }}>Email: </span><span style={{ color: 'var(--text-secondary)' }}>{r.user_email}</span></div>
+                  </div>
+
+                  {r.expires_at && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem' }}>
+                      <Clock3 size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+                      {isClosed ? (
+                        <span style={{ color: 'var(--text-tertiary)' }}>Expired</span>
+                      ) : (
+                        <span style={{ color: 'var(--text-secondary)' }}>Expires in <CountdownTimer expiresAt={r.expires_at} style={{ display: 'inline' }} /></span>
+                      )}
+                    </div>
+                  )}
+
+                  {r.created_at && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Submitted: {new Date(r.created_at).toLocaleString()}</div>
+                  )}
+
+                  {/* Action buttons — only show for non-closed items */}
+                  {!isClosed && (
+                    <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+                      <button
+                        onClick={() => handleApprove(r.id)}
+                        disabled={isActioning}
+                        className="btn btn-sm"
+                        style={{ background: 'var(--primary)', color: 'var(--bg)', flex: 1, justifyContent: 'center', opacity: isActioning ? 0.6 : 1 }}
+                      >
+                        <Check size={14} /> {isActioning ? 'Approving…' : 'Approve'}
+                      </button>
+                      <button
+                        onClick={() => handleReject(r.id)}
+                        disabled={isActioning}
+                        className="btn btn-sm btn-secondary"
+                        style={{ color: 'var(--red)', borderColor: 'rgba(242,87,48,0.3)', flex: 1, justifyContent: 'center', opacity: isActioning ? 0.6 : 1 }}
+                      >
+                        <X size={14} /> {isActioning ? 'Rejecting…' : 'Reject'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPanel({ session }) {
   const [meetups, setMeetups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [tab, setTab] = useState('meetups'); // 'meetups' | 'scan'
+  const [tab, setTab] = useState('meetups'); // 'meetups' | 'scan' | 'approvals'
   const [scanMeetupId, setScanMeetupId] = useState(null);
   const [scanMeetupTitle, setScanMeetupTitle] = useState('');
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
 
   const isAdmin = session && (ADMIN_EMAILS.includes(session.email) || session.email?.includes('@ebc') || session.email?.includes('@EBC'));
 
@@ -817,6 +998,21 @@ export default function AdminPanel({ session }) {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Poll pending approvals count for badge
+  useEffect(() => {
+    if (!isAdmin || !session?.email) return;
+    const poll = async () => {
+      const data = await fetchPendingApprovals(session.email);
+      const active = data.filter(r =>
+        r.status === 'pending_payment' && r.expires_at && new Date(r.expires_at) > new Date()
+      ).length;
+      setPendingApprovalsCount(active);
+    };
+    poll();
+    const id = setInterval(poll, 30000);
+    return () => clearInterval(id);
+  }, [isAdmin, session?.email]);
 
   if (!isAdmin) {
     return (
@@ -872,6 +1068,24 @@ export default function AdminPanel({ session }) {
           }}
         >
           <Camera size={14} /> Scan Passes
+        </button>
+        <button
+          onClick={() => setTab('approvals')}
+          style={{
+            padding: '12px 4px', border: 'none', background: 'transparent',
+            borderBottom: `2.5px solid ${tab === 'approvals' ? 'var(--primary)' : 'transparent'}`,
+            color: tab === 'approvals' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+            fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer',
+            transition: 'all 0.15s',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}
+        >
+          <Clock3 size={14} /> Approvals
+          {pendingApprovalsCount > 0 && (
+            <span style={{ background: 'var(--orange, #FF7101)', color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', borderRadius: 999, lineHeight: 1 }}>
+              {pendingApprovalsCount}
+            </span>
+          )}
         </button>
       </div>
 
@@ -931,6 +1145,8 @@ export default function AdminPanel({ session }) {
               </div>
             )}
           </>
+        ) : tab === 'approvals' ? (
+          <PendingApprovalsTab session={session} />
         ) : (
           <TicketScanner
             scanMeetupId={scanMeetupId}
