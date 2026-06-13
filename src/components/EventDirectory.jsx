@@ -11,8 +11,10 @@ export function CheckedInAttendeeCard({ reservation }) {
     answersObj = {};
   }
 
+  const safeEmail = (reservation.user_email || '').trim();
+
   return (
-    <Link to={`/profile/${encodeURIComponent(reservation.user_email)}`} style={{ textDecoration: 'none', display: 'block' }}>
+    <Link to={`/profile/${encodeURIComponent(safeEmail)}`} state={{ reservation }} style={{ textDecoration: 'none', display: 'block' }}>
       <div style={{
         background: 'var(--bg-elevated)',
         border: '1px solid var(--border)',
@@ -68,8 +70,9 @@ export function CheckedInAttendeeCard({ reservation }) {
 
 export function AttendeeRow({ reservation }) {
   const initials = (reservation.user_name || reservation.user_email || '?').charAt(0).toUpperCase();
+  const safeEmail = (reservation.user_email || '').trim();
   return (
-    <Link to={`/profile/${encodeURIComponent(reservation.user_email)}`} style={{ textDecoration: 'none', display: 'block' }}>
+    <Link to={`/profile/${encodeURIComponent(safeEmail)}`} state={{ reservation }} style={{ textDecoration: 'none', display: 'block' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
         <div style={{
           width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
