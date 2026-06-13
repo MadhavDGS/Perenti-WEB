@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Calendar, Clock, MapPin, Users, Share2, Check, X, ChevronDown, ChevronUp, AlertCircle, ChevronLeft, MessageCircle, Clock3 } from 'lucide-react';
 import Avatar from '../components/Avatar';
 import CountdownTimer from '../components/CountdownTimer';
@@ -182,7 +182,7 @@ function PassModal({ ticket, meetup, onClose }) {
 }
 
 // ── Registration Capsule (Bottom Sticky Bar) ──────────────────────────────────
-function RegistrationCapsule({ meetup, status, remaining, onAction }) {
+function RegistrationCapsule({ meetup, status, remaining, onAction, session }) {
   // Status mapping
   let btnText = 'Register Now';
   let btnBg = 'var(--primary)';
@@ -207,6 +207,13 @@ function RegistrationCapsule({ meetup, status, remaining, onAction }) {
     btnText = 'Register Again';
     btnBg = 'var(--bg-elevated)';
     btnColor = 'var(--text-primary)';
+  }
+
+  if (!session) {
+    btnText = 'Sign in to Book Pass';
+    btnBg = 'var(--bg-elevated)';
+    btnColor = 'var(--text-primary)';
+    disabled = false;
   }
 
   // Portal to document.body so position:fixed is not broken
@@ -767,7 +774,15 @@ export default function MeetupDetail() {
     userStatus = 'EVENT_FULL';
   }
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const handleCapsuleAction = () => {
+    if (!session) {
+      navigate('/login?redirect=' + encodeURIComponent(location.pathname));
+      return;
+    }
+    
     if (userStatus === 'APPROVED') {
       setShowPassModal(true);
     } else if (userStatus === 'NOT_REGISTERED' || userStatus === 'REJECTED') {
@@ -1011,6 +1026,7 @@ export default function MeetupDetail() {
         status={userStatus} 
         remaining={remaining} 
         onAction={handleCapsuleAction} 
+        session={session}
       />
 
       {/* Registration Modal */}

@@ -208,11 +208,11 @@ function AnimatedRoutesWrapper({ isLoggedIn, currentUser, ProtectedRoute, login,
     <PageTransition key={location.pathname}>
       <Routes location={location}>
         <Route path="/" element={isLoggedIn ? <Navigate to="/discover" replace /> : <Landing onLogin={login} theme={theme} toggleTheme={toggleTheme} />} />
-        <Route path="/login" element={isLoggedIn ? <Navigate to="/discover" replace /> : <Login onLogin={login} />} />
+        <Route path="/login" element={isLoggedIn ? <Navigate to={new URLSearchParams(location.search).get('redirect') || '/discover'} replace /> : <Login onLogin={login} />} />
         <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
         <Route path="/directory" element={<ProtectedRoute><Directory /></ProtectedRoute>} />
         <Route path="/meetups" element={<ProtectedRoute><Meetups /></ProtectedRoute>} />
-        <Route path="/meetups/:id" element={<ProtectedRoute><MeetupDetail /></ProtectedRoute>} />
+        <Route path="/meetups/:id" element={<MeetupDetail />} />
         <Route path="/registrations" element={<ProtectedRoute><Registrations currentUser={currentUser} /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminPanel session={currentUser} /></ProtectedRoute>} />
         <Route path="/profile/me" element={<ProtectedRoute><MyProfile currentUser={currentUser} /></ProtectedRoute>} />
