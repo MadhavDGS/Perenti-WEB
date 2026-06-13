@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { Home, Users, User, Settings, Moon, Sun, Calendar, Shield, Ticket } from 'lucide-react';
 import Avatar from './Avatar';
 
-const ADMIN_EMAILS = ['admin@EBC.com', 'sreemadhav@gmail.com', 'madhav@ebc.com'];
+const ADMIN_EMAILS = ['admin@perenti.com', 'sreemadhav@gmail.com', 'madhav@ebc.com', 'shiva24.santosh@gmail.com'];
 
 export default function Sidebar({ onLogout, theme, toggleTheme, currentUser }) {
   const navigate = useNavigate();
