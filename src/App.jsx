@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, LogOut } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import RightPanel from './components/RightPanel';
 import MobileNav from './components/MobileNav';
@@ -15,6 +15,7 @@ import Directory from './pages/Directory';
 import Profile from './pages/Profile';
 import MyProfile from './pages/MyProfile';
 import Settings from './pages/Settings';
+import Live from './pages/Live';
 import Meetups from './pages/Meetups';
 import MeetupDetail from './pages/MeetupDetail';
 import AdminPanel from './pages/AdminPanel';
@@ -68,26 +69,48 @@ function MainLayout({ children, isLoggedIn, onLogout, theme, toggleTheme, curren
           <span style={{ fontFamily: 'var(--font-logo)', fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             EBC
           </span>
-          <button 
-            onClick={toggleTheme}
-            style={{
-              border: 'none',
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border)',
-              width: 36,
-              height: 36,
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: 'var(--text-primary)',
-              transition: 'all 0.2s',
-              outline: 'none'
-            }}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button 
+              onClick={toggleTheme}
+              style={{
+                border: 'none',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-primary)',
+                transition: 'all 0.2s',
+                outline: 'none'
+              }}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button 
+              onClick={onLogout}
+              style={{
+                border: 'none',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--red)',
+                transition: 'all 0.2s',
+                outline: 'none'
+              }}
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
         </div>
 
         {children}
@@ -97,7 +120,7 @@ function MainLayout({ children, isLoggedIn, onLogout, theme, toggleTheme, curren
         <RightPanel currentUser={currentUser} />
       )}
 
-      {!isMeetupDetailPage && <MobileNav />}
+      {!isMeetupDetailPage && <MobileNav currentUser={currentUser} />}
     </div>
   );
 }
@@ -186,11 +209,12 @@ function AnimatedRoutesWrapper({ isLoggedIn, currentUser, ProtectedRoute, login,
     <PageTransition key={location.pathname}>
       <Routes location={location}>
         <Route path="/" element={isLoggedIn ? <Navigate to="/discover" replace /> : <Landing onLogin={login} theme={theme} toggleTheme={toggleTheme} />} />
-        <Route path="/login" element={isLoggedIn ? <Navigate to="/discover" replace /> : <Login onLogin={login} />} />
+        <Route path="/login" element={isLoggedIn ? <Navigate to={new URLSearchParams(location.search).get('redirect') || '/discover'} replace /> : <Login onLogin={login} />} />
         <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
         <Route path="/directory" element={<ProtectedRoute><Directory /></ProtectedRoute>} />
         <Route path="/meetups" element={<ProtectedRoute><Meetups /></ProtectedRoute>} />
-        <Route path="/meetups/:id" element={<ProtectedRoute><MeetupDetail /></ProtectedRoute>} />
+        <Route path="/meetups/:id" element={<MeetupDetail />} />
+        <Route path="/live" element={<ProtectedRoute><Live currentUser={currentUser} /></ProtectedRoute>} />
         <Route path="/registrations" element={<ProtectedRoute><Registrations currentUser={currentUser} /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminPanel session={currentUser} /></ProtectedRoute>} />
         <Route path="/profile/me" element={<ProtectedRoute><MyProfile currentUser={currentUser} /></ProtectedRoute>} />

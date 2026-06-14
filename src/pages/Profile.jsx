@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { ChevronLeft, MapPin, Search, Lightbulb, Rocket, Building2, MessageCircle, Star } from 'lucide-react';
-import { fetchMembers } from '../services/api';
+import { fetchMembers, fetchUserReservations } from '../services/api';
 import Avatar from '../components/Avatar';
 import Tag from '../components/Tag';
 import { LinkedinIcon, InstagramIcon } from '../components/Icons';
@@ -9,18 +9,55 @@ import { LinkedinIcon, InstagramIcon } from '../components/Icons';
 export default function Profile() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const isLoggedIn = localStorage.getItem('ebc_logged_in') === 'true';
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [reservationFallback, setReservationFallback] = useState(location.state?.reservation || null);
+
+  const handleBack = () => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/discover');
+    }
+  };
+
   useEffect(() => {
-    fetchMembers().then(data => {
-      const found = data.find(m => String(m.id) === String(id));
+    fetchMembers().then(async data => {
+      let decodedId = id;
+      try {
+        decodedId = decodeURIComponent(id);
+      } catch (e) {}
+
+      const found = data.find(m => 
+        String(m.id) === String(id) || 
+        String(m.id) === String(decodedId) ||
+        (m.email && String(m.email).toLowerCase() === String(id).toLowerCase()) ||
+        (m.email && String(m.email).toLowerCase() === String(decodedId).toLowerCase())
+      );
+      
       setMember(found || null);
+
+      if (!found && !reservationFallback && decodedId.includes('@')) {
+        // If they are not in the directory, and we don't have reservation state, fetch their reservations
+        try {
+          const userRes = await fetchUserReservations(decodedId);
+          if (userRes && userRes.length > 0) {
+            // Sort by most recent
+            userRes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            setReservationFallback(userRes[0]);
+          }
+        } catch (err) {
+          console.error("Failed to fetch fallback reservation", err);
+        }
+      }
+
       setLoading(false);
     });
-  }, [id]);
+  }, [id, reservationFallback]);
 
   if (loading) {
     return (
@@ -31,6 +68,78 @@ export default function Profile() {
   }
 
   if (!member) {
+    const reservation = reservationFallback;
+
+    if (reservation) {
+      let answers = {};
+      try {
+        answers = JSON.parse(reservation.answers || '{}');
+      } catch (e) {}
+
+      return (
+        <div className="main-feed" style={{ minHeight: '100dvh', background: 'var(--bg)' }}>
+          <div className="page-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button className="btn btn-ghost btn-icon-sm" onClick={handleBack}>
+                <ChevronLeft size={22} />
+              </button>
+              <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>Attendee Profile</span>
+            </div>
+          </div>
+          
+          <div className="profile-cover"></div>
+
+          <div className="profile-hero">
+            <Avatar name={reservation.user_name || reservation.user_email} size="3xl" />
+            <div className="profile-header-info">
+              <div className="profile-info-left">
+                <div className="profile-name">{reservation.user_name || 'Attendee'}</div>
+                <div className="profile-role">{answers.role || 'Event Attendee'}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="profile-content-grid">
+            <div className="profile-main-column">
+              {answers.building && (
+                <div className="profile-section-card animate-in animate-in-delay-1">
+                  <h4>What I'm Building</h4>
+                  <p>{answers.building}</p>
+                </div>
+              )}
+
+              {answers.lookingFor && (
+                <div className="profile-row-cards animate-in animate-in-delay-3">
+                  <div className="profile-half-card" style={{ width: '100%' }}>
+                    <div className="profile-icon-wrap">
+                      <Search size={16} color="var(--text-primary)" />
+                    </div>
+                    <h5>Looking For</h5>
+                    <p>{answers.lookingFor}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="profile-side-column">
+              <div className="profile-section-card animate-in animate-in-delay-2" style={{ background: 'var(--bg-elevated)', borderStyle: 'dashed' }}>
+                <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginBottom: 12, fontWeight: 500 }}>
+                    This attendee hasn't fully set up their Community Profile yet.
+                  </p>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', background: 'var(--bg)', display: 'inline-block', padding: '6px 12px', borderRadius: 8 }}>
+                    Contact Email: <br /><span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{reservation.user_email}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div style={{ height: 80 }} />
+        </div>
+      );
+    }
+
     return (
       <div className="main-feed" style={{ padding: 48, textAlign: 'center', alignItems: 'center', justifyContent: 'center' }}>
         <h2 style={{ fontFamily: 'var(--font-display)', marginBottom: 16 }}>Profile Not Found</h2>
@@ -42,14 +151,6 @@ export default function Profile() {
 
   const openLink = (url) => {
     if (url) window.open(url, '_blank');
-  };
-
-  const handleBack = () => {
-    if (window.history.state && window.history.state.idx > 0) {
-      navigate(-1);
-    } else {
-      navigate('/discover');
-    }
   };
 
   const handleJoinClick = () => {

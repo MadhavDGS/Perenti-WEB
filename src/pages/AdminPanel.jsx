@@ -9,7 +9,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://ebc-app-backend.o
 const apiClient = axios.create({ baseURL: `${API_BASE}/api`, headers: { 'Content-Type': 'application/json' } });
 
 // Admin emails — anyone in this list gets admin access
-const ADMIN_EMAILS = ['admin@EBC.com', 'sreemadhav@gmail.com', 'madhav@ebc.com'];
+const ADMIN_EMAILS = ['admin@perenti.com', 'sreemadhav@gmail.com', 'madhav@ebc.com', 'shiva24.santosh@gmail.com'];
 
 function StatCard({ label, value, color = 'var(--primary)' }) {
   return (
